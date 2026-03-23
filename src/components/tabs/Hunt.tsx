@@ -1,0 +1,252 @@
+'use client'
+
+import { useState } from 'react'
+import ModalDefault from '../ModalDefault'
+import styles from '@/styles/Hunt.module.css'
+
+type Character = {
+  id: number
+  server: string
+  nickname: string
+  job: string
+  level: string
+}
+
+type HuntLog = {
+  id: number
+  date: string
+  time: string
+  income: number
+  solErda: number
+  coreGem: number
+  consumables: {
+    unionWealth: number | null
+    unionLuck: number | null
+    smallPotion: number | null
+    potion: number | null
+  }
+}
+
+type Period = 'weekly' | 'monthly'
+
+const today = () => new Date().toISOString().slice(0, 10)
+
+const getWeekRange = (date: Date) => {
+  const day = date.getDay()
+  // 목요일 기준 (4)
+  const diffToThursday = (day + 3) % 7  // 목요일까지 거슬러 올라가는 일수
+  const thursday = new Date(date)
+  thursday.setDate(date.getDate() - diffToThursday)
+  const wednesday = new Date(thursday)
+  wednesday.setDate(thursday.getDate() + 6)
+  return { start: thursday, end: wednesday }
+}
+
+const formatDate = (d: Date) => d.toISOString().slice(0, 10)
+
+type Props = {
+  characters: Character[]
+}
+
+const defaultForm = {
+  date: today(),
+  time: '',
+  income: '',
+  solErda: '',
+  coreGem: '',
+  unionWealth: false,
+  unionWealthAmt: '',
+  unionLuck: false,
+  unionLuckAmt: '',
+  smallPotion: false,
+  smallPotionAmt: '',
+  potion: false,
+  potionAmt: '',
+}
+
+export default function Hunt({ characters }: Props) {
+  const [period, setPeriod] = useState<Period>('weekly')
+  const [logs, setLogs] = useState<HuntLog[]>([])
+  const [open, setOpen] = useState(false)
+  const [form, setForm] = useState(defaultForm)
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target
+    setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
+  }
+
+  const handleSubmit = () => {
+    const log: HuntLog = {
+      id: Date.now(),
+      date: form.date,
+      time: form.time,
+      income: Number(form.income),
+      solErda: Number(form.solErda),
+      coreGem: Number(form.coreGem),
+      consumables: {
+        unionWealth: form.unionWealth ? Number(form.unionWealthAmt) : null,
+        unionLuck: form.unionLuck ? Number(form.unionLuckAmt) : null,
+        smallPotion: form.smallPotion ? Number(form.smallPotionAmt) : null,
+        potion: form.potion ? Number(form.potionAmt) : null,
+      }
+    }
+    setLogs((prev) => [...prev, log])
+    setForm(defaultForm)
+    setOpen(false)
+  }
+
+  const now = new Date()
+  const { start, end } = getWeekRange(now)
+
+  const filteredLogs = logs.filter((log) => {
+    const d = new Date(log.date)
+    if (period === 'weekly') return d >= start && d <= end
+    if (period === 'monthly') return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+    return true
+  })
+
+  const totalIncome = filteredLogs.reduce((s, l) => s + l.income, 0)
+  const totalSolErda = filteredLogs.reduce((s, l) => s + l.solErda, 0)
+  const totalCoreGem = filteredLogs.reduce((s, l) => s + l.coreGem, 0)
+  const totalUnionWealth = filteredLogs.reduce((s, l) => s + (l.consumables.unionWealth ?? 0), 0)
+  const totalUnionLuck = filteredLogs.reduce((s, l) => s + (l.consumables.unionLuck ?? 0), 0)
+  const totalSmallPotion = filteredLogs.reduce((s, l) => s + (l.consumables.smallPotion ?? 0), 0)
+  const totalPotion = filteredLogs.reduce((s, l) => s + (l.consumables.potion ?? 0), 0)
+
+  if (characters.length === 0) return <div className={styles.empty}>캐릭터를 선택하세요</div>
+
+  return (
+    <div className={styles.container}>
+
+      {/* 상단 필터 */}
+      <div className={styles.filterRow}>
+        <div className={styles.periodBtns}>
+          <button
+            className={`${styles.periodBtn} ${period === 'weekly' ? styles.active : ''}`}
+            onClick={() => setPeriod('weekly')}
+          >주간</button>
+          <button
+            className={`${styles.periodBtn} ${period === 'monthly' ? styles.active : ''}`}
+            onClick={() => setPeriod('monthly')}
+          >월간</button>
+        </div>
+        <span className={styles.dateLabel}>{today()}</span>
+        <button className={styles.addBtn} onClick={() => setOpen(true)}>+ 추가</button>
+      </div>
+
+      {/* 주간 범위 표시 */}
+      {period === 'weekly' && (
+        <div className={styles.weekRange}>
+          {formatDate(start)} ~ {formatDate(end)}
+        </div>
+      )}
+
+      {/* 대시보드 */}
+      <div className={styles.dashboard}>
+        <div className={styles.dashCard}>
+          <span className={styles.dashLabel}>수익</span>
+          <span className={styles.dashValue}>{totalIncome.toLocaleString()} 메소</span>
+        </div>
+        <div className={styles.dashCard}>
+          <span className={styles.dashLabel}>솔 에르다 조각</span>
+          <span className={styles.dashValue}>{totalSolErda}</span>
+        </div>
+        <div className={styles.dashCard}>
+          <span className={styles.dashLabel}>코어젬스톤</span>
+          <span className={styles.dashValue}>{totalCoreGem}</span>
+        </div>
+        <div className={`${styles.dashCard} ${styles.dashFull}`}>
+          <span className={styles.dashLabel}>사용 재화</span>
+          <span className={styles.dashValue}>유니온의 부 {totalUnionWealth} · 유니온의 행운 {totalUnionLuck} · 소형비약 {totalSmallPotion} · 비약 {totalPotion}</span>
+        </div>
+      </div>
+
+      {/* 카드 목록 */}
+      <div className={styles.logList}>
+        {filteredLogs.length === 0 && <p className={styles.empty}>기록이 없어요</p>}
+        {filteredLogs.map((log) => (
+          <div key={log.id} className={styles.logCard}>
+            <div className={styles.logTop}>
+              <span className={styles.logDate}>{log.date} {log.time}</span>
+            </div>
+            <div className={styles.logRow}>
+              <span>수익</span><span>{log.income.toLocaleString()} 메소</span>
+            </div>
+            <div className={styles.logRow}>
+              <span>솔 에르다 조각</span><span>{log.solErda}</span>
+            </div>
+            <div className={styles.logRow}>
+              <span>코어젬스톤</span><span>{log.coreGem}</span>
+            </div>
+            {log.consumables.unionWealth !== null && (
+              <div className={styles.logRow}><span>유니온의 부</span><span>{log.consumables.unionWealth}</span></div>
+            )}
+            {log.consumables.unionLuck !== null && (
+              <div className={styles.logRow}><span>유니온의 행운</span><span>{log.consumables.unionLuck}</span></div>
+            )}
+            {log.consumables.smallPotion !== null && (
+              <div className={styles.logRow}><span>소형 재물획득의 비약</span><span>{log.consumables.smallPotion}</span></div>
+            )}
+            {log.consumables.potion !== null && (
+              <div className={styles.logRow}><span>재물획득의 비약</span><span>{log.consumables.potion}</span></div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* 팝업 */}
+      {open && (
+        <ModalDefault onClose={() => setOpen(false)}>
+          <h2 className={styles.modalTitle}>사냥 수익 추가</h2>
+
+          <label className={styles.label}>날짜</label>
+          <input className={styles.input} type="date" name="date" value={form.date} onChange={handleChange} />
+
+          <label className={styles.label}>시간</label>
+          <input className={styles.input} type="time" name="time" value={form.time} onChange={handleChange} />
+
+          <label className={styles.label}>수익 (메소)</label>
+          <input className={styles.input} type="number" name="income" placeholder="0" value={form.income} onChange={handleChange} />
+
+          <label className={styles.label}>솔 에르다 조각</label>
+          <input className={styles.input} type="number" name="solErda" placeholder="0" value={form.solErda} onChange={handleChange} />
+
+          <label className={styles.label}>코어젬스톤</label>
+          <input className={styles.input} type="number" name="coreGem" placeholder="0" value={form.coreGem} onChange={handleChange} />
+
+          <div className={styles.consumableSection}>
+            <span className={styles.label}>사용 재화</span>
+
+            {([
+              { key: 'unionWealth', amtKey: 'unionWealthAmt', label: '유니온의 부' },
+              { key: 'unionLuck', amtKey: 'unionLuckAmt', label: '유니온의 행운' },
+              { key: 'smallPotion', amtKey: 'smallPotionAmt', label: '소형 재물획득의 비약' },
+              { key: 'potion', amtKey: 'potionAmt', label: '재물획득의 비약' },
+            ] as const).map(({ key, amtKey, label }) => (
+              <div key={key} className={styles.consumableRow}>
+                <label className={styles.consumableLabel}>
+                  <input type="checkbox" name={key} checked={form[key]} onChange={handleChange} />
+                  {label}
+                </label>
+                <input
+                  className={styles.consumableInput}
+                  type="number"
+                  name={amtKey}
+                  placeholder="0"
+                  value={form[amtKey]}
+                  onChange={handleChange}
+                  disabled={!form[key]}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className={styles.buttons}>
+            <button className={styles.cancel} onClick={() => setOpen(false)}>취소</button>
+            <button className={styles.confirm} onClick={handleSubmit}>추가</button>
+          </div>
+        </ModalDefault>
+      )}
+    </div>
+  )
+}

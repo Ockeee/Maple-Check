@@ -1,8 +1,14 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  /* config options here */
-  reactCompiler: true,
-};
+import withPWA from 'next-pwa'
 
-export default nextConfig;
+const config = withPWA({
+  dest: 'public',
+  disable: process.env.NODE_ENV === 'development',
+})
+
+export default config({
+  reactCompiler: true,
+  turbopack: {},
+});
+

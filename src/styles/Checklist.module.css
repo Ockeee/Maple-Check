@@ -1,0 +1,18 @@
+.container {
+    max-width: 590px;
+    margin: 0 auto;
+    min-height: 100vh;
+  }
+  
+  .header {
+    padding: 20px 16px 12px;
+  }
+  
+  .title {
+    font-size: 20px;
+    font-weight: 700;
+  }
+  
+  .main {
+    padding: 16px;
+  }
