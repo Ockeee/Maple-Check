@@ -68,8 +68,9 @@ body {
   background: var(--bg, #fff);
   border-radius: 12px;
   padding: 24px;
-  min-width: 300px;
+  width: 80%;
+  max-width: 500px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
