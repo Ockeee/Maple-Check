@@ -121,3 +121,24 @@
     background-position: center;
     background-size: 10px;
   }
+
+  .input {
+    padding: 6px;
+    border-radius: 6px;
+  }
+
+  .buttons {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .cancel, .confirm {
+    padding: 8px 10px;
+    width: 100px;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    border-radius: 6px;
+  }
