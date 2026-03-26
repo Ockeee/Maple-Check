@@ -10,10 +10,13 @@ type Character = {
   nickname: string
   job: string
   level: string
+  mesoRate?: string
+  dropRate?: string
 }
 
 type HuntLog = {
   id: number
+  characterId: number | null
   date: string
   time: string
   income: number
@@ -49,6 +52,7 @@ type Props = {
 }
 
 const defaultForm = {
+  characterId: null as number | null,
   date: today(),
   time: '',
   income: '',
@@ -78,6 +82,7 @@ export default function Hunt({ characters }: Props) {
   const handleSubmit = () => {
     const log: HuntLog = {
       id: Date.now(),
+      characterId: form.characterId,
       date: form.date,
       time: form.time,
       income: Number(form.income),
@@ -99,8 +104,11 @@ export default function Hunt({ characters }: Props) {
   const { start, end } = getWeekRange(now)
 
   const filteredLogs = logs.filter((log) => {
-    const d = new Date(log.date)
-    if (period === 'weekly') return d >= start && d <= end
+    // timezone 문제 방지 - 날짜 문자열 직접 비교
+    const d = new Date(log.date + 'T00:00:00')
+    const s = new Date(formatDate(start) + 'T00:00:00')
+    const e = new Date(formatDate(end) + 'T00:00:00')
+    if (period === 'weekly') return d >= s && d <= e
     if (period === 'monthly') return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
     return true
   })
@@ -112,6 +120,15 @@ export default function Hunt({ characters }: Props) {
   const totalUnionLuck = filteredLogs.reduce((s, l) => s + (l.consumables.unionLuck ?? 0), 0)
   const totalSmallPotion = filteredLogs.reduce((s, l) => s + (l.consumables.smallPotion ?? 0), 0)
   const totalPotion = filteredLogs.reduce((s, l) => s + (l.consumables.potion ?? 0), 0)
+
+  const timeOptions = Array.from({ length: 12 }, (_, i) => {
+    const totalMinutes = (i + 1) * 30
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
+    const label = hours === 0 ? `${minutes}분` : minutes === 0 ? `${hours}시간` : `${hours}시간 ${minutes}분`
+    const value = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+    return { label, value }
+  })
 
   if (characters.length === 0) return <div className={styles.empty}>캐릭터를 선택하세요</div>
 
@@ -167,8 +184,15 @@ export default function Hunt({ characters }: Props) {
         {filteredLogs.map((log) => (
           <div key={log.id} className={styles.logCard}>
             <div className={styles.logTop}>
+              <span className={styles.logChar}>
+                {characters.find((c) => c.id === log.characterId)?.nickname ?? '-'}
+              </span>
               <span className={styles.logDate}>{log.date} {log.time}</span>
+              <span className={styles.logCharSub}>
+                메소 {characters.find((c) => c.id === log.characterId)?.mesoRate ?? 0}% · 드랍 {characters.find((c) => c.id === log.characterId)?.dropRate ?? 0}%
+              </span>
             </div>
+
             <div className={styles.logRow}>
               <span>수익</span><span>{log.income.toLocaleString()} 메소</span>
             </div>
@@ -178,6 +202,8 @@ export default function Hunt({ characters }: Props) {
             <div className={styles.logRow}>
               <span>코어젬스톤</span><span>{log.coreGem}</span>
             </div>
+
+            <div>사용한 재화</div>
             {log.consumables.unionWealth !== null && (
               <div className={styles.logRow}><span>유니온의 부</span><span>{log.consumables.unionWealth}</span></div>
             )}
@@ -196,14 +222,38 @@ export default function Hunt({ characters }: Props) {
 
       {/* 팝업 */}
       {open && (
-        <ModalDefault onClose={() => setOpen(false)}>
+        <ModalDefault onClose={() => setOpen(false)} closeOnOverlay={false}>
           <h2 className={styles.modalTitle}>사냥 수익 추가</h2>
+
+          <label className={styles.label}>캐릭터 선택</label>
+          <div className={styles.charList}>
+            {characters.map((c) => (
+              <div
+                key={c.id}
+                className={`${styles.charItem} ${form.characterId === c.id ? styles.charSelected : ''}`}
+                onClick={() => setForm((prev) => ({ ...prev, characterId: c.id }))}
+              >
+                <span>{c.nickname}</span>
+                <span className={styles.charSub}>Lv.{c.level} · 메소{c.mesoRate}% · 드랍{c.dropRate}%</span>
+              </div>
+            ))}
+          </div>
 
           <label className={styles.label}>날짜</label>
           <input className={styles.input} type="date" name="date" value={form.date} onChange={handleChange} />
 
-          <label className={styles.label}>시간</label>
-          <input className={styles.input} type="time" name="time" value={form.time} onChange={handleChange} />
+          <label className={styles.label}>사냥 시간</label>
+          <select
+            className={styles.input}
+            name="time"
+            value={form.time}
+            onChange={(e) => setForm((prev) => ({ ...prev, time: e.target.value }))}
+          >
+            <option value="">선택</option>
+            {timeOptions.map((t) => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
 
           <label className={styles.label}>수익 (메소)</label>
           <input className={styles.input} type="number" name="income" placeholder="0" value={form.income} onChange={handleChange} />
