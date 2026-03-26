@@ -13,18 +13,26 @@ type Character = {
     nickname: string
     job: string
     level: string
+    mesoRate?: string
+    dropRate?: string
 }
 
+// type Props = {
+//     characters: Character[]
+//     setCharacters: React.Dispatch<React.SetStateAction<Character[]>>
+//     selectedIds: number[]
+//     onToggle: (id: number) => void
+// }
+
+// export default function CharacterSection({ characters, setCharacters, selectedIds, onToggle }: Props) {
 type Props = {
     characters: Character[]
     setCharacters: React.Dispatch<React.SetStateAction<Character[]>>
-    selectedIds: number[]
-    onToggle: (id: number) => void
 }
-
-export default function CharacterSection({ characters, setCharacters, selectedIds, onToggle }: Props) {
+    
+export default function CharacterSection({ characters, setCharacters }: Props) {
     const [open, setOpen] = useState(false);
-    const [form, setForm] = useState({ server: '', nickname: '', job: '', level: '' });
+    const [form, setForm] = useState({ server: '', nickname: '', job: '', level: '', mesoRate: '', dropRate: '' })
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,7 +42,7 @@ export default function CharacterSection({ characters, setCharacters, selectedId
     const handleSubmit = () => {
         if (!form.nickname) return
         setCharacters((prev) => [...prev, { ...form, id: Date.now() }])
-        setForm({ server: '', nickname: '', job: '', level: '' })
+        setForm({ server: '', nickname: '', job: '', level: '', mesoRate: '', dropRate: '' })
         setOpen(false)
     };
 
@@ -57,7 +65,8 @@ export default function CharacterSection({ characters, setCharacters, selectedId
 
         <div className={styles.list}>
         {Object.entries(grouped).map(([server, chars]) => {
-            const selectedCount = chars.filter((c) => selectedIds.includes(c.id)).length
+            // const selectedCount = chars.filter((c) => selectedIds.includes(c.id)).length
+            const selectedCount = chars.length
 
             return (
                 <div key={server} className={styles.serverGroup}>
@@ -84,10 +93,10 @@ export default function CharacterSection({ characters, setCharacters, selectedId
                                     <span className={styles.level}>Lv.{c.level}</span> 
                                 </div>
                             </div>
-                            <div
+                            {/* <div
                                 className={`${styles.checkbox} ${selectedIds.includes(c.id) ? styles.checked : ''}`}
                                 onClick={() => onToggle(c.id)}
-                            />
+                            /> */}
                         </div>
                     ))}
                 </div>
@@ -96,7 +105,7 @@ export default function CharacterSection({ characters, setCharacters, selectedId
         </div>
 
         {open && (
-            <ModalDefault onClose={() => setOpen(false)}>
+            <ModalDefault onClose={() => setOpen(false)} closeOnOverlay={false}>
                 <h2>캐릭터 추가</h2>
                 <select name="server" value={form.server} onChange={(e) => setForm(prev => ({ ...prev, server: e.target.value }))} className={styles.input}>
                 <option value="">서버 선택</option>
@@ -109,6 +118,8 @@ export default function CharacterSection({ characters, setCharacters, selectedId
                 </select>
                 <input className={styles.input} name="nickname" placeholder="닉네임" value={form.nickname} onChange={handleChange} />
                 <input className={styles.input} name="level" placeholder="레벨" value={form.level} onChange={handleChange} />
+                <input className={styles.input} name="mesoRate" placeholder="메소획득률 (%)" value={form.mesoRate} onChange={handleChange} />
+                <input className={styles.input} name="dropRate" placeholder="아이템드랍률 (%)" value={form.dropRate} onChange={handleChange} />
                 <div className={styles.buttons}>
                 <button className={styles.cancel} onClick={() => setOpen(false)}>취소</button>
                 <button className={styles.confirm} onClick={handleSubmit}>추가</button>
