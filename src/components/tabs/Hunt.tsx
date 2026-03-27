@@ -23,16 +23,22 @@ type HuntLog = {
   solErda: number
   coreGem: number
   consumables: {
-    unionWealth: number | null
-    unionLuck: number | null
-    smallPotion: number | null
-    potion: number | null
+    unionWealth: number
+    unionLuck: number
+    smallPotion: number
+    potion: number
   }
 }
 
 type Period = 'weekly' | 'monthly'
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 
 const getWeekRange = (date: Date) => {
   const day = date.getDay()
@@ -45,7 +51,12 @@ const getWeekRange = (date: Date) => {
   return { start: thursday, end: wednesday }
 }
 
-const formatDate = (d: Date) => d.toISOString().slice(0, 10)
+const formatDate = (d: Date) => {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 
 type Props = {
   characters: Character[]
@@ -58,14 +69,10 @@ const defaultForm = {
   income: '',
   solErda: '',
   coreGem: '',
-  unionWealth: false,
-  unionWealthAmt: '',
-  unionLuck: false,
-  unionLuckAmt: '',
-  smallPotion: false,
-  smallPotionAmt: '',
-  potion: false,
-  potionAmt: '',
+  unionWealthAmt: '0',
+  unionLuckAmt: '0',
+  smallPotionAmt: '0',
+  potionAmt: '0',
 }
 
 export default function Hunt({ characters }: Props) {
@@ -73,6 +80,9 @@ export default function Hunt({ characters }: Props) {
   const [logs, setLogs] = useState<HuntLog[]>([])
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(defaultForm)
+  const [menuOpenId, setMenuOpenId] = useState<number | null>(null)
+  const [editLog, setEditLog] = useState<HuntLog | null>(null)
+  const [deleteId, setDeleteId] = useState<number | null>(null)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target
@@ -81,7 +91,7 @@ export default function Hunt({ characters }: Props) {
 
   const handleSubmit = () => {
     const log: HuntLog = {
-      id: Date.now(),
+      id: editLog ? editLog.id : Date.now(),
       characterId: form.characterId,
       date: form.date,
       time: form.time,
@@ -89,13 +99,18 @@ export default function Hunt({ characters }: Props) {
       solErda: Number(form.solErda),
       coreGem: Number(form.coreGem),
       consumables: {
-        unionWealth: form.unionWealth ? Number(form.unionWealthAmt) : null,
-        unionLuck: form.unionLuck ? Number(form.unionLuckAmt) : null,
-        smallPotion: form.smallPotion ? Number(form.smallPotionAmt) : null,
-        potion: form.potion ? Number(form.potionAmt) : null,
+        unionWealth: Number(form.unionWealthAmt),
+        unionLuck: Number(form.unionLuckAmt),
+        smallPotion: Number(form.smallPotionAmt),
+        potion: Number(form.potionAmt),
       }
     }
-    setLogs((prev) => [...prev, log])
+    if (editLog) {
+      setLogs((prev) => prev.map((l) => l.id === editLog.id ? log : l))
+    } else {
+      setLogs((prev) => [...prev, log])
+    }
+    setEditLog(null)
     setForm(defaultForm)
     setOpen(false)
   }
@@ -129,6 +144,34 @@ export default function Hunt({ characters }: Props) {
     const value = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
     return { label, value }
   })
+
+  const openEdit = (log: HuntLog) => {
+    setEditLog(log)
+    setForm({
+      characterId: log.characterId,
+      date: log.date,
+      time: log.time,
+      income: String(log.income),
+      solErda: String(log.solErda),
+      coreGem: String(log.coreGem),
+      unionWealthAmt: String(log.consumables.unionWealth),
+      unionLuckAmt: String(log.consumables.unionLuck),
+      smallPotionAmt: String(log.consumables.smallPotion),
+      potionAmt: String(log.consumables.potion),
+    })
+    setMenuOpenId(null)
+    setOpen(true)
+  }
+  
+  const openDelete = (id: number) => {
+    setDeleteId(id)
+    setMenuOpenId(null)
+  }
+  
+  const handleDelete = () => {
+    setLogs((prev) => prev.filter((l) => l.id !== deleteId))
+    setDeleteId(null)
+  }
 
   if (characters.length === 0) return <div className={styles.empty}>캐릭터를 선택하세요</div>
 
@@ -183,6 +226,20 @@ export default function Hunt({ characters }: Props) {
         {filteredLogs.length === 0 && <p className={styles.empty}>기록이 없어요</p>}
         {filteredLogs.map((log) => (
           <div key={log.id} className={styles.logCard}>
+            <div className={styles.menuWrap}>
+              <button
+                className={styles.menuBtn}
+                onClick={() => setMenuOpenId(menuOpenId === log.id ? null : log.id)}
+              >
+                ···
+              </button>
+              {menuOpenId === log.id && (
+                <div className={styles.menuDropdown}>
+                  <button onClick={() => openEdit(log)}>수정</button>
+                  <button onClick={() => openDelete(log.id)}>삭제</button>
+                </div>
+              )}
+            </div>
             <div className={styles.logTop}>
               <span className={styles.logChar}>
                 {characters.find((c) => c.id === log.characterId)?.nickname ?? '-'}
@@ -256,13 +313,13 @@ export default function Hunt({ characters }: Props) {
           </select>
 
           <label className={styles.label}>수익 (메소)</label>
-          <input className={styles.input} type="number" name="income" placeholder="0" value={form.income} onChange={handleChange} />
+          <input className={styles.input} type="number" name="income" min="0" placeholder="0" value={form.income} onChange={handleChange} />
 
           <label className={styles.label}>솔 에르다 조각</label>
-          <input className={styles.input} type="number" name="solErda" placeholder="0" value={form.solErda} onChange={handleChange} />
+          <input className={styles.input} type="number" name="solErda" min="0" placeholder="0" value={form.solErda} onChange={handleChange} />
 
           <label className={styles.label}>코어젬스톤</label>
-          <input className={styles.input} type="number" name="coreGem" placeholder="0" value={form.coreGem} onChange={handleChange} />
+          <input className={styles.input} type="number" name="coreGem" min="0" placeholder="0" value={form.coreGem} onChange={handleChange} />
 
           <div className={styles.consumableSection}>
             <span className={styles.label}>사용 재화</span>
@@ -272,20 +329,16 @@ export default function Hunt({ characters }: Props) {
               { key: 'unionLuck', amtKey: 'unionLuckAmt', label: '유니온의 행운' },
               { key: 'smallPotion', amtKey: 'smallPotionAmt', label: '소형 재물획득의 비약' },
               { key: 'potion', amtKey: 'potionAmt', label: '재물획득의 비약' },
-            ] as const).map(({ key, amtKey, label }) => (
-              <div key={key} className={styles.consumableRow}>
-                <label className={styles.consumableLabel}>
-                  <input type="checkbox" name={key} checked={form[key]} onChange={handleChange} />
-                  {label}
-                </label>
+            ] as const).map(({ amtKey, label }) => (
+              <div key={amtKey} className={styles.consumableRow}>
+                <span className={styles.consumableLabel}>{label}</span>
                 <input
                   className={styles.consumableInput}
                   type="number"
                   name={amtKey}
-                  placeholder="0"
+                  min="0"
                   value={form[amtKey]}
                   onChange={handleChange}
-                  disabled={!form[key]}
                 />
               </div>
             ))}
@@ -294,6 +347,15 @@ export default function Hunt({ characters }: Props) {
           <div className={styles.buttons}>
             <button className={styles.cancel} onClick={() => setOpen(false)}>취소</button>
             <button className={styles.confirm} onClick={handleSubmit}>추가</button>
+          </div>
+        </ModalDefault>
+      )}
+      {deleteId !== null && (
+        <ModalDefault onClose={() => setDeleteId(null)} closeOnOverlay={false}>
+          <p>정말 삭제하시겠어요?</p>
+          <div className={styles.buttons}>
+            <button className={styles.cancel} onClick={() => setDeleteId(null)}>취소</button>
+            <button className={styles.confirm} onClick={handleDelete}>삭제</button>
           </div>
         </ModalDefault>
       )}
