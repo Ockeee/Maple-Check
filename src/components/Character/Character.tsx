@@ -1,14 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ModalDefault from '../ModalDefault';
 import styles from '@/styles/Character.module.css';
 import { SERVERS, SERVER_IMAGES, JOBS } from '@/data/gameData';
 import Image from 'next/image'
 import { NavArrowDownSolid, NavArrowUpSolid } from 'iconoir-react';
+import { createClient } from '@/lib/supabase/client'
 
 type Character = {
-    id: number
+    id: string 
     server: string
     nickname: string
     job: string
@@ -34,17 +35,65 @@ export default function CharacterSection({ characters, setCharacters }: Props) {
     const [open, setOpen] = useState(false);
     const [form, setForm] = useState({ server: '', nickname: '', job: '', level: '', mesoRate: '', dropRate: '' })
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+    const supabase = createClient();
+
+    useEffect(() => {
+        const fetch = async () => {
+          const { data } = await supabase
+            .from('characters')
+            .select('*')
+            .order('created_at', { ascending: true })
+          if (data) {
+            setCharacters(data.map((c) => ({
+              id: c.id,
+              server: c.server,
+              nickname: c.nickname,
+              job: c.job,
+              level: c.level,
+              mesoRate: c.meso_rate,
+              dropRate: c.drop_rate,
+            })))
+          }
+        }
+        fetch()
+      }, [])
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!form.nickname) return
-        setCharacters((prev) => [...prev, { ...form, id: Date.now() }])
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+      
+        const { data, error } = await supabase
+          .from('characters')
+          .insert({
+            user_id: user.id,
+            server: form.server,
+            nickname: form.nickname,
+            job: form.job,
+            level: form.level,
+            meso_rate: form.mesoRate,
+            drop_rate: form.dropRate,
+          })
+          .select()
+          .single()
+      
+        if (error || !data) return
+        setCharacters((prev) => [...prev, {
+          id: data.id,
+          server: data.server,
+          nickname: data.nickname,
+          job: data.job,
+          level: data.level,
+          mesoRate: data.meso_rate,
+          dropRate: data.drop_rate,
+        }])
         setForm({ server: '', nickname: '', job: '', level: '', mesoRate: '', dropRate: '' })
         setOpen(false)
-    };
+    }
 
     const grouped = characters.reduce<Record<string, Character[]>>((acc, c) => {
         if (!acc[c.server]) acc[c.server] = []
@@ -60,7 +109,7 @@ export default function CharacterSection({ characters, setCharacters }: Props) {
         <div className={styles.section}>
         <div className={styles.top}>
             <span className={styles.label}>내 캐릭터</span>
-            <button className={styles.addBtn} onClick={() => setOpen(true)}>+ 추가</button>
+            <button className={styles.addBtn} onClick={() => setOpen(true)}>+ 캐릭터 추가</button>
         </div>
 
         <div className={styles.list}>
