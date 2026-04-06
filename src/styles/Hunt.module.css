@@ -644,3 +644,142 @@
     font-size: 16px;
     font-weight: 700;
   }
+
+
+
+  .calendar { margin-bottom: 16px; }
+
+.calHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.calHeader button { background: none; border: none; cursor: pointer; font-size: 18px; }
+
+.calGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.calDayName {
+  text-align: center;
+  font-size: 12px;
+  padding: 4px 0;
+  opacity: 0.5;
+}
+
+.calEmpty { height: 56px; }
+
+.calCell {
+  position: relative;
+  height: 56px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 6px;
+  gap: 2px;
+}
+.calCell:hover { background: rgba(255,255,255,0.05); }
+
+.calDayNum { font-size: 13px; }
+
+.calCell {
+  height: 100px;
+}
+
+.calLogInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  font-size: 10px;
+  opacity: 0.7;
+  line-height: 1.3;
+}
+
+.calHasLog {
+  background: rgba(124, 111, 224, 0.1);
+}
+
+.calAddBtn {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  font-size: 18px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.calCell:hover .calAddBtn { display: flex; }
+
+.calToday { outline: 1px solid var(--accent, #7c6fe0); }
+.calSelected { background: rgba(124, 111, 224, 0.2); }
+
+.sunday { color: #e05555; }
+.saturday { color: #5588e0; }
+
+
+.tierGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tierItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tierBadge {
+  font-size: 11px;
+  opacity: 0.6;
+  width: 40px;
+}
+
+.tierBtn {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.tierCount {
+  width: 36px;
+  text-align: center;
+  font-size: 13px;
+  border: none;
+  background: transparent;
+  -moz-appearance: textfield;
+}
+.tierCount::-webkit-outer-spin-button,
+.tierCount::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+
+
+/* 스케쥴 */
+.checkList { display: flex; flex-direction: column; gap: 8px; padding: 8px 0; }
+.checkRow { display: flex; align-items: center; justify-content: space-between; }
+.checkLabel { font-size: 14px; }
+
+.itemList { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.itemRow {
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.itemSelected { border-color: var(--accent, #7c6fe0); background: rgba(124,111,224,0.1); }

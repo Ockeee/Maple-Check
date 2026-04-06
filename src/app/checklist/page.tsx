@@ -5,26 +5,68 @@ import CharacterSection from '@/components/Character/Character'
 import TabBar from '@/components/Tab'
 import HuntSection from '@/components/tabs/Hunt'
 import BossSection from '@/components/tabs/Boss'
+import ContentsSection from '@/components/tabs/Contents'
 import styles from '@/styles/Checklist.module.css'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 
 type Tab = 'hunt' | 'boss' | 'content'
 
 export type Character = {
-  id: number
+  id: string  
   server: string
   nickname: string
   job: string
   level: string
 }
 
+export type BossSlot = {
+  name: string
+  difficulty: string
+  people: number
+}
+
+export type BossEntry = {
+  id: string
+  character: Character
+  bossSlots: BossSlot[]
+  checkedBosses: string[]
+  MonthlyBoss: {
+    difficulty: string | null
+    people: number
+    checkedWeekStart: string | null
+    checkedMonth: string | null
+  }
+}
+
+export type ContentEntry = {
+  id: string
+  character: Character
+  items: ChecklistKey[]
+  checked: ChecklistKey[]
+  weekStart: string
+}
+
+export type ChecklistKey = 'boss' | 'guild' | 'epic' | 'extreme'
+
 export default function Checklist() {
   const [activeTab, setActiveTab] = useState<Tab>('hunt')
   const [characters, setCharacters] = useState<Character[]>([])
+  const [bossEntries, setBossEntries] = useState<BossEntry[]>([])
+  const [contentEntries, setContentEntries] = useState<ContentEntry[]>([])
+  const supabase = createClient()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push('/')
+  }
 
   return (
     <div className="app">
       <header className={styles.header}>
         <h1 className={styles.title}>용사님의 메이플체크</h1>
+        <button onClick={handleLogout}>로그아웃</button>
       </header>
 
       <CharacterSection
@@ -45,7 +87,21 @@ export default function Checklist() {
 
       <main className={styles.main}>
         {activeTab === 'hunt' && <HuntSection characters={characters} />}
-        {activeTab === 'boss' && <BossSection characters={characters} />}
+        {activeTab === 'boss' && (
+          <BossSection
+            characters={characters}
+            entries={bossEntries}
+            setEntries={setBossEntries}
+          />
+        )}
+        {activeTab === 'content' && (
+          <ContentsSection
+            characters={characters}
+            bossEntries={bossEntries}
+            entries={contentEntries}
+            setEntries={setContentEntries}
+          />
+        )}
       </main>
     </div>
   )
