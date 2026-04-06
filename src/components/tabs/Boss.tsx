@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ModalDefault from '../ModalDefault';
 import styles from '@/styles/Hunt.module.css';
 import { BOSSES, MonthlyBoss, type Boss } from '@/data/gameData'
+import { createClient } from '@/lib/supabase/client'
 
 type Character = {
-  id: number
+  id: string  
   server: string
   nickname: string
   job: string
@@ -27,7 +28,7 @@ type MonthlyBossState  = {
 }
 
 type BossEntry = {
-  id: number
+  id: string  
   character: Character
   bossSlots: BossSlot[]
   checkedBosses: string[] 
@@ -36,22 +37,25 @@ type BossEntry = {
 
 type Props = {
   characters: Character[]
+  entries: BossEntry[]
+  setEntries: React.Dispatch<React.SetStateAction<BossEntry[]>>
 }
 
 type ModalMode = 'add' | 'edit' | 'delete'
 
-export default function Boss({ characters }: Props) {
-  const [entries, setEntries] = useState<BossEntry[]>([]);
+export default function Boss({ characters, entries, setEntries }: Props) {
+  // const [entries, setEntries] = useState<BossEntry[]>([]);
   const [modalMode, setModalMode] = useState<ModalMode | null>(null);
-  const [targetId, setTargetId] = useState<number | null>(null);
-  const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
+  const [targetId, setTargetId] = useState<string | null>(null);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const bossKey = (b: { name: string; difficulty: string }) => `${b.name}_${b.difficulty}`;
   const uniqueBossNames = [...new Set(BOSSES.map((b) => b.name))];
   const [selectedBossSlots, setSelectedBossSlots] = useState<BossSlot[]>([]);
   const [selectedMonthlyDiff, setSelectedMonthlyDiff] = useState<string | null>(null);
   const [selectedMonthlyPeople, setSelectedMonthlyPeople] = useState<number>(1);
   const usedCharIds = entries.map((e) => e.character.id);
-  
+  const supabase = createClient()
+
   // const toggleBossName = (name: string) => {  // 보스팝업 체크박스
   //   setSelectedBossSlots((prev) => {
   //     if (prev.some((s) => s.name === name)) return prev.filter((s) => s.name !== name)
@@ -61,8 +65,38 @@ export default function Boss({ characters }: Props) {
   //   })
   // }
 
+  useEffect(() => {
+    const fetch = async () => {
+      const { data } = await supabase
+        .from('boss_entries')
+        .select('*, characters(*)')
+        .order('created_at', { ascending: true })
+      if (data) {
+        setEntries(data.map((row) => ({
+          id: row.id,
+          character: {
+            id: row.characters.id,
+            server: row.characters.server,
+            nickname: row.characters.nickname,
+            job: row.characters.job,
+            level: row.characters.level,
+          },
+          bossSlots: row.boss_slots,
+          checkedBosses: row.checked_bosses,
+          MonthlyBoss: {
+            difficulty: row.monthly_difficulty,
+            people: row.monthly_people,
+            checkedWeekStart: row.monthly_checked_week_start,
+            checkedMonth: row.monthly_checked_month,
+          },
+        })))
+      }
+    }
+    fetch()
+  }, [])
+
   // 추가/수정 팝업 state
-  const [selectedCharId, setSelectedCharId] = useState<number | null>(null);
+  const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
 
   const openAdd = () => {
     setSelectedCharId(null)
@@ -79,7 +113,7 @@ export default function Boss({ characters }: Props) {
     setMenuOpenId(null)
   }
 
-  const openDelete = (id: number) => {
+  const openDelete = (id: string) => {
     setTargetId(id)
     setModalMode('delete')
     setMenuOpenId(null)
@@ -94,12 +128,29 @@ export default function Boss({ characters }: Props) {
     setSelectedBossSlots([])
   }
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!selectedCharId || selectedBossSlots.length === 0) return
     const char = characters.find((c) => c.id === selectedCharId)
     if (!char) return
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+  
+    const { data, error } = await supabase
+      .from('boss_entries')
+      .insert({
+        user_id: user.id,
+        character_id: selectedCharId,
+        boss_slots: selectedBossSlots,
+        checked_bosses: [],
+        monthly_difficulty: selectedMonthlyDiff,
+        monthly_people: selectedMonthlyPeople,
+      })
+      .select()
+      .single()
+  
+    if (error || !data) return
     setEntries((prev) => [...prev, {
-      id: Date.now(),
+      id: data.id,
       character: char,
       bossSlots: selectedBossSlots,
       checkedBosses: [],
@@ -108,39 +159,53 @@ export default function Boss({ characters }: Props) {
     closeModal()
   }
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!targetId) return
+    const { error } = await supabase
+      .from('boss_entries')
+      .update({
+        boss_slots: selectedBossSlots,
+        checked_bosses: [],
+        monthly_difficulty: selectedMonthlyDiff,
+        monthly_people: selectedMonthlyPeople,
+      })
+      .eq('id', targetId)
+  
+    if (error) return
     setEntries((prev) => prev.map((e) => {
       if (e.id !== targetId) return e
       return {
         ...e,
         bossSlots: selectedBossSlots,
         checkedBosses: [],
-        MonthlyBoss: {
-          ...e.MonthlyBoss,
-          difficulty: selectedMonthlyDiff,
-          people: selectedMonthlyPeople,
-        }
+        MonthlyBoss: { ...e.MonthlyBoss, difficulty: selectedMonthlyDiff, people: selectedMonthlyPeople },
       }
     }))
     closeModal()
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
+    if (!targetId) return
+    const { error } = await supabase.from('boss_entries').delete().eq('id', targetId)
+    if (error) return
     setEntries((prev) => prev.filter((e) => e.id !== targetId))
     closeModal()
   }
 
-  const toggleBossCheck = (entryId: number, bossName: string) => {
-    setEntries((prev) => prev.map((e) => {
-      if (e.id !== entryId) return e
-      const checked = e.checkedBosses.includes(bossName)
-        ? e.checkedBosses.filter((b) => b !== bossName)
-        : [...e.checkedBosses, bossName]
-      return { ...e, checkedBosses: checked }
-    }))
+  const toggleBossCheck = async (entryId: string, bossName: string) => {
+    const entry = entries.find((e) => e.id === entryId)
+    if (!entry) return
+    const checked = entry.checkedBosses.includes(bossName)
+      ? entry.checkedBosses.filter((b) => b !== bossName)
+      : [...entry.checkedBosses, bossName]
 
-    // await supabase.from('boss_logs').upsert(...)
+    const { error } = await supabase
+      .from('boss_entries')
+      .update({ checked_bosses: checked })
+      .eq('id', entryId)
+
+    if (error) return
+    setEntries((prev) => prev.map((e) => e.id === entryId ? { ...e, checkedBosses: checked } : e))
   }
 
   const changeSlotDifficulty = (name: string, difficulty: string) => {
@@ -151,12 +216,19 @@ export default function Boss({ characters }: Props) {
     setSelectedBossSlots((prev) => prev.map((s) => s.name === name ? { ...s, people } : s))
   }
 
-  const toggleAllCheck = (entryId: number) => {
-    setEntries((prev) => prev.map((e) => {
-      if (e.id !== entryId) return e
-      const allChecked = e.bossSlots.every((s) => e.checkedBosses.includes(`${s.name}_${s.difficulty}`))
-      return { ...e, checkedBosses: allChecked ? [] : e.bossSlots.map((s) => `${s.name}_${s.difficulty}`) }
-    }))
+  const toggleAllCheck = async (entryId: string) => {
+    const entry = entries.find((e) => e.id === entryId)
+    if (!entry) return
+    const allChecked = entry.bossSlots.every((s) => entry.checkedBosses.includes(`${s.name}_${s.difficulty}`))
+    const checked = allChecked ? [] : entry.bossSlots.map((s) => `${s.name}_${s.difficulty}`)
+  
+    const { error } = await supabase
+      .from('boss_entries')
+      .update({ checked_bosses: checked })
+      .eq('id', entryId)
+  
+    if (error) return
+    setEntries((prev) => prev.map((e) => e.id === entryId ? { ...e, checkedBosses: checked } : e))
   }
 
   const getWeeklyIncome = (entry: BossEntry) => {
@@ -202,13 +274,21 @@ export default function Boss({ characters }: Props) {
     return entry.MonthlyBoss.checkedMonth === thisMonth
   }
   
-  const toggleMonthlyBoss = (entryId: number) => {
+  const toggleMonthlyBoss = async (entryId: string) => {
     const thisMonth = new Date().toISOString().slice(0, 7)
     const weekStart = getWeekStart()
+    const entry = entries.find((e) => e.id === entryId)
+    if (!entry) return
+    const alreadyChecked = entry.MonthlyBoss.checkedMonth === thisMonth
   
+    const update = alreadyChecked
+      ? { monthly_checked_week_start: null, monthly_checked_month: null }
+      : { monthly_checked_week_start: weekStart, monthly_checked_month: thisMonth }
+  
+    const { error } = await supabase.from('boss_entries').update(update).eq('id', entryId)
+    if (error) return
     setEntries((prev) => prev.map((e) => {
       if (e.id !== entryId) return e
-      const alreadyChecked = e.MonthlyBoss.checkedMonth === thisMonth
       return {
         ...e,
         MonthlyBoss: alreadyChecked
