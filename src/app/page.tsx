@@ -30,7 +30,7 @@ export default function Home() {
   return (
     <div className="app">
       <main className="main">
-        <h1>메이플 체크(메쳌)</h1>
+        <h1>아마따(메이플 체크리스트)</h1>
         <div className="login">
           <input
             type="email"
