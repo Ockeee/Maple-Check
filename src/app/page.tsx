@@ -4,7 +4,6 @@ import Image from "next/image";
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import styles from "./page.module.css";
 import Link from "next/link";
 
 export default function Home() {
@@ -29,24 +28,26 @@ export default function Home() {
   }
 
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <h1>메이플체크</h1>
-        <input
-          type="email"
-          placeholder="이메일"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="비밀번호"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        {error && <p>{error}</p>}
-        <button onClick={handleSubmit}>{isSignup ? '회원가입' : '로그인'}</button>
-        <button onClick={() => setIsSignup((prev) => !prev)}>
+    <div className="app">
+      <main className="main">
+        <h1>메이플 체크(메쳌)</h1>
+        <div className="login">
+          <input
+            type="email"
+            placeholder="이메일"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <input
+            type="password"
+            placeholder="비밀번호"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          {error && <p>{error}</p>}
+        </div>
+        <button className="login_button" onClick={handleSubmit}>{isSignup ? '회원가입' : '로그인'}</button>
+        <button className="signin_button" onClick={() => setIsSignup((prev) => !prev)}>
           {isSignup ? '로그인으로' : '회원가입으로'}
         </button>
       </main>
