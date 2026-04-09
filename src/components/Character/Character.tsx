@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react'
 import ModalDefault from '../ModalDefault';
 import styles from '@/styles/Character.module.css';
 import { SERVERS, SERVER_IMAGES, JOBS } from '@/data/gameData';
-import Image from 'next/image'
+import Image from 'next/image';
 import { NavArrowDownSolid, NavArrowUpSolid } from 'iconoir-react';
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/client';
+import CharacterInfoModal from './CharacterInfoModal';
 
 type Character = {
     id: string 
@@ -14,6 +15,7 @@ type Character = {
     nickname: string
     job: string
     level: string
+    image?: string
     mesoRate?: string
     dropRate?: string
 }
@@ -33,9 +35,13 @@ type Props = {
     
 export default function CharacterSection({ characters, setCharacters }: Props) {
     const [open, setOpen] = useState(false);
-    const [form, setForm] = useState({ server: '', nickname: '', job: '', level: '', mesoRate: '', dropRate: '' })
+    const [form, setForm] = useState({ image: '', server: '', nickname: '', job: '', level: '', mesoRate: '', dropRate: '' })
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
     const supabase = createClient();
+    const [searching, setSearching] = useState(false)
+    const [searchError, setSearchError] = useState('')
+    const [deleteId, setDeleteId] = useState<string | null>(null)
+    const [infoModal, setInfoModal] = useState<any>(null)
 
     useEffect(() => {
         const fetch = async () => {
@@ -52,15 +58,33 @@ export default function CharacterSection({ characters, setCharacters }: Props) {
               level: c.level,
               mesoRate: c.meso_rate,
               dropRate: c.drop_rate,
+              image: c.image, 
             })))
           }
         }
         fetch()
       }, [])
 
+    const handleSearch = async () => {
+        if (!form.nickname) return
+        setSearching(true)
+        setSearchError('')
+        const res = await fetch(`/api/character?name=${encodeURIComponent(form.nickname)}`)
+        const data = await res.json()
+        setSearching(false)
+        if (data.error) return setSearchError(data.error)
+        setForm(prev => ({ ...prev, ...data }))
+    }
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
     };
+
+    const handleCardClick = async (c: Character) => {
+        const res = await fetch(`/api/character?name=${encodeURIComponent(c.nickname)}`)
+        const data = await res.json()
+        setInfoModal(data)
+      }
 
     const handleSubmit = async () => {
         if (!form.nickname) return
@@ -77,6 +101,7 @@ export default function CharacterSection({ characters, setCharacters }: Props) {
             level: form.level,
             meso_rate: form.mesoRate,
             drop_rate: form.dropRate,
+            image: form.image,
           })
           .select()
           .single()
@@ -90,10 +115,24 @@ export default function CharacterSection({ characters, setCharacters }: Props) {
           level: data.level,
           mesoRate: data.meso_rate,
           dropRate: data.drop_rate,
+          image: data.image, 
         }])
-        setForm({ server: '', nickname: '', job: '', level: '', mesoRate: '', dropRate: '' })
+        setForm({ image: '', server: '', nickname: '', job: '', level: '', mesoRate: '', dropRate: ''})
         setOpen(false)
     }
+
+    const handleClose = () => {
+        setOpen(false)
+        setForm({ image: '', server: '', nickname: '', job: '', level: '', mesoRate: '', dropRate: '' })
+        setSearchError('')
+      }
+
+    const handleDelete = async (id: string) => {
+        const { error } = await supabase.from('characters').delete().eq('id', id)
+        if (error) return
+        setCharacters((prev) => prev.filter((c) => c.id !== id))
+        setDeleteId(null)
+      }
 
     const grouped = characters.reduce<Record<string, Character[]>>((acc, c) => {
         if (!acc[c.server]) acc[c.server] = []
@@ -133,7 +172,12 @@ export default function CharacterSection({ characters, setCharacters }: Props) {
                     </div>
 
                     {!collapsed[server] && chars.map((c) => (
-                        <div key={c.id} className={styles.card}>
+                        <div key={c.id} className={styles.card} onClick={() => handleCardClick(c)}>
+                            {c.image && (
+                                <div className={styles.charImage}>
+                                    <Image src={c.image!} alt={c.nickname} fill />
+                                </div>
+                            )}
                             <div className={styles.cardInfo}>
                                 <span className={styles.nickname}>{c.nickname}</span>
                                 <div className={styles.info}>
@@ -146,6 +190,7 @@ export default function CharacterSection({ characters, setCharacters }: Props) {
                                 className={`${styles.checkbox} ${selectedIds.includes(c.id) ? styles.checked : ''}`}
                                 onClick={() => onToggle(c.id)}
                             /> */}
+                            <button onClick={() => setDeleteId(c.id)}>삭제</button>
                         </div>
                     ))}
                 </div>
@@ -154,27 +199,40 @@ export default function CharacterSection({ characters, setCharacters }: Props) {
         </div>
 
         {open && (
-            <ModalDefault onClose={() => setOpen(false)} closeOnOverlay={false}>
+            <ModalDefault onClose={handleClose} closeOnOverlay={false} className={styles.charModal}>
                 <h2>캐릭터 추가</h2>
-                <select name="server" value={form.server} onChange={(e) => setForm(prev => ({ ...prev, server: e.target.value }))} className={styles.input}>
-                <option value="">서버 선택</option>
-                    {SERVERS.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-
-                <select name="job" value={form.job} onChange={(e) => setForm(prev => ({ ...prev, job: e.target.value }))} className={styles.input}>
-                    <option value="">직업 선택</option>
-                    {JOBS.map((j) => <option key={j} value={j}>{j}</option>)}
-                </select>
-                <input className={styles.input} name="nickname" placeholder="닉네임" value={form.nickname} onChange={handleChange} />
-                <input className={styles.input} name="level" placeholder="레벨" value={form.level} onChange={handleChange} />
-                <input className={styles.input} name="mesoRate" placeholder="메소획득률 (%)" value={form.mesoRate} onChange={handleChange} />
-                <input className={styles.input} name="dropRate" placeholder="아이템드랍률 (%)" value={form.dropRate} onChange={handleChange} />
+                <div className={styles.searchRow}>
+                    <input
+                        className={styles.input}
+                        name="nickname"
+                        placeholder="닉네임 입력 후 검색"
+                        value={form.nickname}
+                        onChange={handleChange}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleSearch() }}
+                    />
+                    <button onClick={handleSearch} disabled={searching}>
+                        {searching ? '검색중...' : '검색'}
+                    </button>
+                </div>
+                {searchError && <p>{searchError}</p>}
+                {form.server && (
+                    <CharacterInfoModal info={form} />
+                )}
                 <div className={styles.buttons}>
-                <button className={styles.cancel} onClick={() => setOpen(false)}>취소</button>
-                <button className={styles.confirm} onClick={handleSubmit}>추가</button>
+                    <button className={styles.cancel} onClick={handleClose}>취소</button>
+                    <button className={styles.confirm} onClick={handleSubmit}>추가</button>
                 </div>
             </ModalDefault>
-            )}
+        )}
+        {deleteId && (
+            <ModalDefault onClose={() => setDeleteId(null)} closeOnOverlay={false}>
+                <p>정말 삭제하시겠어요?</p>
+                <div className={styles.buttons}>
+                <button className={styles.cancel} onClick={() => setDeleteId(null)}>취소</button>
+                <button className={styles.confirm} onClick={() => handleDelete(deleteId)}>삭제</button>
+                </div>
+            </ModalDefault>
+        )}
         </div>
     )
 }
