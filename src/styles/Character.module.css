@@ -142,3 +142,199 @@
     font-weight: 500;
     border-radius: 6px;
   }
+
+  .charImage {
+    width: 200px;
+    height: 200px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-bottom: 40px;
+  }
+  
+  .charImage img {
+    width: 450px;
+    height: 450px;
+    object-fit: cover;
+  }
+
+  .charModal {
+    background: var(--popup_bg);
+  }
+
+  .wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+    width: 100%;
+  }
+  
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .title {
+    font-weight: 800;
+    font-size: 16px;
+    color: var(--green);
+  }
+  
+  .level {
+    font-size: 14px;
+    color: var(--gray_dark);
+  }
+  
+  .profile {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    background: var(--bg_gray);
+    border-radius: 8px;
+    padding: 12px;
+  }
+  
+  .tags {
+    display: flex;
+    gap: 6px;
+    width: 100%;
+  }
+  
+  .tag {
+    background: var(--gray_light);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 12px;
+  }
+  
+  .imageWrap {
+    overflow: hidden;
+    width: 120px;
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .imageWrap img {
+    width: 180px;
+    height: 180px;
+    object-fit: contain;
+  }
+  
+  .profileRight {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+  }
+  
+  .profileBottom {
+    display: flex;
+    gap: 16px;
+    width: 100%;
+  }
+  
+  .infoRow {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    gap: 12px;
+  }
+  
+  .infoRow span:first-child {
+    color: var(--gray_dark);
+  }
+  
+  .tabs {
+    display: flex;
+    border-bottom: 2px solid var(--gray_light);
+  }
+  
+  .tab {
+    flex: 1;
+    padding: 8px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--gray_dark);
+  }
+  
+  .tab.active {
+    border-bottom-color: var(--orange);
+    color: var(--text);
+    font-weight: 700;
+  }
+  
+  .content {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  
+  .combatPower {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    background: var(--bg_gray);
+    border-radius: 6px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  
+  .statGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  
+  .statItem {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 4px 8px;
+    background: var(--bg_gray);
+    border-radius: 4px;
+  }
+  
+  .statList {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .statRow {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--gray_light);
+  }
+  
+  .abilityList {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  
+  .abilityItem {
+    display: flex;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    background: var(--bg_gray);
+  }
+  
+  .abilityGrade {
+    font-weight: 700;
+    color: var(--gray_dark);
+  }
+  
+  .abilityItem.legendary .abilityGrade { color: #00b894; }
+  .abilityItem.unique .abilityGrade { color: #fdcb6e; }
+  .abilityItem.epic .abilityGrade { color: #a29bfe; }

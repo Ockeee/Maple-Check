@@ -10,5 +10,12 @@ const config = withPWA({
 export default config({
   reactCompiler: true,
   turbopack: {},
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'open.api.nexon.com',
+      },
+    ],
+  },
 });
-

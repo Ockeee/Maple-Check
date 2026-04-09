@@ -54,20 +54,9 @@ export default function Checklist() {
   const [characters, setCharacters] = useState<Character[]>([])
   const [bossEntries, setBossEntries] = useState<BossEntry[]>([])
   const [contentEntries, setContentEntries] = useState<ContentEntry[]>([])
-  const supabase = createClient()
-  const router = useRouter()
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push('/')
-  }
 
   return (
     <div className="app">
-      <header className={styles.header}>
-        <h1 className={styles.title}>용사님의 메이플체크</h1>
-        <button onClick={handleLogout}>로그아웃</button>
-      </header>
 
       <CharacterSection
         characters={characters}
