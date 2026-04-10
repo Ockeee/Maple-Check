@@ -41,6 +41,7 @@ export default function Topbar() {
                 width={150}
                 height={50}
                 className="topbar_title"
+                loading="eager"
             />
             <nav className="topbar_nav">
                 <button onClick={handleClick}>{isLoggedIn ? '로그아웃' : '로그인'}</button>

@@ -15,7 +15,8 @@
   }
   
   .tab.active {
-    color: #111827;
-    border-bottom: 2px solid #111827;
+    color: var(--orange);
+    border-bottom: 2px solid var(--orange);
     margin-bottom: -2px;
+    font-weight: 700;
   }

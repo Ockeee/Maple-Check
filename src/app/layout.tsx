@@ -8,11 +8,14 @@ const myFont = localFont({
   variable: '--font-main',
 })
 export const metadata: Metadata = {
-  title: "Checklist App",
+  title: "아맞다 메이플!",
   description: "My checklist app",
   manifest: "/manifest.json",
-  themeColor: "#000000",
 };
+
+export const viewport = {
+  themeColor: '#ffffff',
+}
 
 export default function RootLayout({
   children,
