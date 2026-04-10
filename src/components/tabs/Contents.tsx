@@ -14,13 +14,15 @@ type Character = {
   level: string
 }
 
+const EPIC_SUBS = ['하이마운틴', '앵글러컴퍼니', '악몽선경'] as const
+type EpicKey = `epic-${typeof EPIC_SUBS[number]}`
+
 const CHECKLIST_ITEMS = [
   { key: 'guild', label: '길드 수로/플래그' },
-  { key: 'epic', label: '에픽던전' },
   { key: 'extreme', label: '익스트림몬스터파크' },
 ] as const
 
-type ChecklistKey = typeof CHECKLIST_ITEMS[number]['key'] | 'boss'
+type ChecklistKey = typeof CHECKLIST_ITEMS[number]['key'] | 'boss' | EpicKey
 
 type ContentEntry = {
   id: string
@@ -59,6 +61,25 @@ export default function Contents({ characters, bossEntries, entries, setEntries 
   const [editId, setEditId] = useState<string | null>(null)
 
   const supabase = createClient()
+  const usedEpicKeys = entries
+    .filter(e => e.id !== editId)
+    .flatMap(e => e.items.filter(i => i.startsWith('epic-'))) as EpicKey[]
+  
+  // 서버별 익몬 완료 카운트
+  const getExtremeCount = (server: string) =>
+    entries.filter(e =>
+      e.character.server === server &&
+      e.items.includes('extreme') &&
+      e.checked.includes('extreme')
+    ).length
+  
+  // 서버별 entries 그룹핑
+  const groupedByServer = entries.reduce<Record<string, ContentEntry[]>>((acc, e) => {
+    const s = e.character.server
+    if (!acc[s]) acc[s] = []
+    acc[s].push(e)
+    return acc
+  }, {})
 
   useEffect(() => {
     const fetch = async () => {
@@ -109,9 +130,17 @@ export default function Contents({ characters, bossEntries, entries, setEntries 
   const usedCharIds = entries.map((e) => e.character.id)
 
   const toggleItem = (key: ChecklistKey) => {
-    setSelectedItems((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
-    )
+    // setSelectedItems((prev) =>
+    //   prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    // )
+    setSelectedItems((prev) => {
+      if (key.startsWith('epic-')) {
+        // 다른 epic 제거하고 이 키만 토글
+        const withoutEpic = prev.filter(k => !k.startsWith('epic-'))
+        return prev.includes(key) ? withoutEpic : [...withoutEpic, key]
+      }
+      return prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    })
   }
 
   const handleAdd = async () => {
@@ -166,6 +195,11 @@ export default function Contents({ characters, bossEntries, entries, setEntries 
   const toggleCheck = async (entryId: string, key: ChecklistKey) => {
     const entry = entries.find((e) => e.id === entryId)
     if (!entry) return
+
+    if (key === 'extreme' && !entry.checked.includes('extreme')) {
+      if (getExtremeCount(entry.character.server) >= 2) return
+    }
+
     const checked = entry.checked.includes(key)
       ? entry.checked.filter((k) => k !== key)
       : [...entry.checked, key]
@@ -209,56 +243,84 @@ export default function Contents({ characters, bossEntries, entries, setEntries 
     return entry.bossSlots.length > 0 && entry.checkedBosses.length === entry.bossSlots.length
   }
 
+  const getItemLabel = (key: ChecklistKey) => {
+    if (key.startsWith('epic-')) return `에픽던전-${key.replace('epic-', '')}`
+    if (key === 'boss') return '주간 보스'
+    return CHECKLIST_ITEMS.find((i) => i.key === key)?.label ?? key
+  }
+
   if (characters.length === 0) return <div className={styles.empty}>캐릭터를 선택하세요</div>
 
   return (
     <div className={styles.container}>
       <div className={styles.topRow}>
-        <button className={styles.addBtn} onClick={() => setOpen(true)}>+ 콘텐츠 추가</button>
+        <button className={styles.addBtn} onClick={() => setOpen(true)}>+ 콘텐츠 캐릭터 추가</button>
       </div>
 
-      <div className={styles.grid}>
-        {entries.map((entry) => (
-          <div key={entry.id} className={styles.card}>
-            <div className={styles.cardHeader}>
-              <div className={styles.cardCharInfo}>
-                <span className={styles.cardNickname}>{entry.character.nickname}</span>
-                <span className={styles.cardSub}>Lv.{entry.character.level} · {entry.character.job}</span>
-              </div>
-              <div className={styles.menuWrap}>
-                <button
-                  className={styles.menuBtn}
-                  onClick={() => setMenuOpenId(menuOpenId === entry.id ? null : entry.id)}
-                >···</button>
-                {menuOpenId === entry.id && (
-                  <div className={styles.menuDropdown}>
-                    <button onClick={() => openEdit(entry)}>수정</button>
-                    <button onClick={() => { setDeleteId(entry.id); setMenuOpenId(null) }}>삭제</button>
-                  </div>
-                )}
-              </div>
-            </div>
+      <div className={styles.serverColumns}>
+        {Object.entries(groupedByServer).map(([server, serverEntries]) => (
+          <div key={server} className={styles.serverColumn}>
+            <span className={styles.serverColumnLabel}>{server}</span>
 
-            <div className={styles.checkList}>
-              {entry.items.includes('boss') && (
-                <div className={styles.checkRow}>
-                  <span className={styles.checkLabel}>주간 보스 ({getBossLabel(entry.character.id)})</span>
-                  <div
-                    className={`${styles.doneBtn} ${isBossDone(entry.character.id) ? styles.done : ''}`}
-                    onClick={() => toggleCheck(entry.id, 'boss')}
-                  >완료</div>
+            {serverEntries.map((entry) => (
+              <div key={entry.id} className={styles.card}>
+
+                <div className={styles.cardHeader}>
+                  <div className={styles.cardCharInfo}>
+                    <span className={styles.cardNickname}>{entry.character.nickname}</span>
+                    <span className={styles.cardSub}>Lv.{entry.character.level} · {entry.character.job}</span>
+                  </div>
+                  <div className={styles.menuWrap}>
+                    <button
+                      className={styles.menuBtn}
+                      onClick={() => setMenuOpenId(menuOpenId === entry.id ? null : entry.id)}
+                    >···</button>
+                    {menuOpenId === entry.id && (
+                      <div className={styles.menuDropdown}>
+                        <button onClick={() => openEdit(entry)}>수정</button>
+                        <button onClick={() => { setDeleteId(entry.id); setMenuOpenId(null) }}>삭제</button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
-              {CHECKLIST_ITEMS.filter((item) => entry.items.includes(item.key)).map((item) => (
-                <div key={item.key} className={styles.checkRow}>
-                  <span className={styles.checkLabel}>{item.label}</span>
-                  <div
-                    className={`${styles.doneBtn} ${entry.checked.includes(item.key) ? styles.done : ''}`}
-                    onClick={() => toggleCheck(entry.id, item.key)}
-                  >완료</div>
+
+                <div className={styles.checkList}>
+                  {entry.items.map((key) => {
+                    const typedKey = key as ChecklistKey
+
+                    // 익스트림 비활성화 조건: 내가 완료 안 했고 서버에서 이미 2개 완료됨
+                    const isExtreme = typedKey === 'extreme'
+                    const extremeDisabled = isExtreme &&
+                      !entry.checked.includes('extreme') &&
+                      getExtremeCount(entry.character.server) >= 2
+
+                    // 보스 완료 여부
+                    const isBoss = typedKey === 'boss'
+                    const bossDone = isBoss && isBossDone(entry.character.id)
+
+                    const isDone = isBoss ? bossDone : entry.checked.includes(typedKey)
+
+                    return (
+                      <div key={key} className={styles.checkRow}>
+                        <span className={styles.checkLabel}>
+                          {isBoss
+                            ? `주간 보스 (${getBossLabel(entry.character.id)})`
+                            : getItemLabel(typedKey)
+                          }
+                        </span>
+                        <div
+                          className={`${styles.doneBtn} ${isDone ? styles.done : ''} ${extremeDisabled ? styles.disabled : ''}`}
+                          onClick={() => {
+                            if (!extremeDisabled) toggleCheck(entry.id, typedKey)
+                          }}
+                        >완료</div>
+                      </div>
+                    )
+                  })}
                 </div>
-              ))}
-            </div>
+
+              </div>
+            ))}
           </div>
         ))}
       </div>
@@ -289,6 +351,7 @@ export default function Contents({ characters, bossEntries, entries, setEntries 
                     >
                       <span>{c.nickname}</span>
                       <span className={styles.charSub}>Lv.{c.level} · {c.job}</span>
+                      <span className={styles.cdelete} onClick={() => { setSelectedCharId(null)}}>x</span>
                     </div>
                   )
                 })()
@@ -314,15 +377,33 @@ export default function Contents({ characters, bossEntries, entries, setEntries 
             <>
               <label className={styles.label}>체크리스트 선택</label>
               <div className={styles.itemList}>
-                {[{ key: 'boss' as const, label: '주간 보스' }, ...CHECKLIST_ITEMS].map((item) => (
+                {/* 주간 보스 */}
+                <div
+                  className={`${styles.itemRow} ${selectedItems.includes('boss') ? styles.itemSelected : ''}`}
+                  onClick={() => toggleItem('boss')}
+                >주간 보스</div>
+
+                {/* 길드, 익스트림 */}
+                {CHECKLIST_ITEMS.map((item) => (
                   <div
                     key={item.key}
                     className={`${styles.itemRow} ${selectedItems.includes(item.key) ? styles.itemSelected : ''}`}
                     onClick={() => toggleItem(item.key)}
-                  >
-                    {item.label}
-                  </div>
+                  >{item.label}</div>
                 ))}
+
+                {/* 에픽던전 하위항목 */}
+                {EPIC_SUBS.map((sub) => {
+                  const key = `epic-${sub}` as EpicKey
+                  const used = usedEpicKeys.includes(key) && !selectedItems.includes(key)
+                  return (
+                    <div
+                      key={key}
+                      className={`${styles.itemRow} ${selectedItems.includes(key) ? styles.itemSelected : ''} ${used ? styles.itemDisabled : ''}`}
+                      onClick={() => { if (!used) toggleItem(key) }}
+                    >에픽던전-{sub}</div>
+                  )
+                })}
               </div>
             </>
           )}
